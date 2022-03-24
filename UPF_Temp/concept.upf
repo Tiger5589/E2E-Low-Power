@@ -1,0 +1,8 @@
+#The following sets of commands do the same thing
+set_scope blk1
+create_power_domain PD1
+	and
+create_power_domain PD1 -elements blk1 -scope blk1
+
+
+

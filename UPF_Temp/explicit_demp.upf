@@ -1,0 +1,46 @@
+create_supply_set top_pwr_set 
+create_supply_set top_pwr_set_sw 
+create_power_domain PD \
+	¡Velements { a } \
+	 -supply {primary top_pwr_set}
+
+create_power_switch top_sw   -domain PD \
+  -input_supply_port {in top_pwr_set.power}   \
+  -output_supply_port {out top_pwr_set_sw.power} \
+  -control_port "p0_sd ${PWR_CTRLR_TOP}p0_sd" \
+  -on_state {p0_on_state in {!p0_sd}} \
+  -off_state {p0_off_state p0_sd}
+
+set_isolation PDiso -domain PD              
+	-isolation_supply_set ssTOP                    
+	-clamp_value 1
+
+set_retention PDret -domain PD              
+	-retention_supply_set ssTOP
+
+
+add_power_state  top_pwr_set  -state LO  \
+	{-supply_expr {power == `{FULL_ON, 1.08}}  \
+	{-supply_expr {power == `{OFF, 0.0}}  \
+	-logic_expr {!instOn & clkGate} }
+	¡Vsimstate NORMAL  
+#Refinement by ICC
+create_supply_port myVDD
+create_supply_port myVSS
+create_supply_port isoVDD
+# independance net, no -domain
+create_supply_net myVDD
+create_supply_net myVSS
+create_supply_net isoVDD
+
+connect_supply_net myVDD -ports {myVDD}
+connect_supply_net myVSS -ports {myVSS}
+connect_supply_net isoVDD -ports {isoVDD}
+
+create_supply_set top_pwr_set 
+	-function {power myVDD}        
+	-function {ground myVSS} -update
+create_supply_set sub_pwr_set 
+	-function {power isoVDD}        
+	-function {ground myVSS} -update
+

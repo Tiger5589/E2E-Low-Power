@@ -1,0 +1,75 @@
+create_supply_set PVCC_ON_pwr_set
+create_supply_set CVCC_ON_pwr_set -function {ground PVCC_ON_pwr_set.ground}
+create_supply_set PVCC_SW_pwr_set -function {ground PVCC_ON_pwr_set.ground}
+create_supply_set CVCC_SW_pwr_set -function {ground PVCC_ON_pwr_set.ground}
+
+create_power_domain PVCC_ON -include_scope
+create_power_domain CVCC_ON -elements {}
+create_power_domain PVCC_SW -elements {}
+create_power_domain CVCC_SW -elements {}
+
+create_supply_port PVCC
+create_supply_port CVCC
+create_supply_port VSS
+
+connect_supply_net PVCC_ON_pwr_set.power -port PVCC
+connect_supply_net CVCC_ON_pwr_set.power -port CVCC
+connect_supply_net CVCC_ON_pwr_set.ground -port VSS
+
+set_domain_supply_net PVCC_ON -primary_power_net PVCC_ON_pwr_set.power -primary_ground_net PVCC_ON_pwr_set.ground
+set_domain_supply_net CVCC_ON -primary_power_net CVCC_ON_pwr_set.power -primary_ground_net CVCC_ON_pwr_set.ground
+set_domain_supply_net PVCC_SW -primary_power_net PVCC_SW_pwr_set.power -primary_ground_net PVCC_SW_pwr_set.ground
+set_domain_supply_net CVCC_SW -primary_power_net CVCC_SW_pwr_set.power -primary_ground_net CVCC_SW_pwr_set.ground
+
+create_power_switch SW_PVCC -domain PVCC_ON \
+	-control_port {ctr1 PD} \
+	-control_port {ctr2 SLEEPB} \
+	-input_supply_port {vin PVCC_ON_pwr_set.power} \
+	-output_supply_port {vout PVCC_SW_pwr_set.power} \
+	-on_state {on_state vin {!ctr1&ctr2}}
+
+create_power_switch SW_CVCC -domain CVCC_ON \
+	-control_port {ctr1 PD} \
+	-input_supply_port {vin CVCC_ON_pwr_set.power} \
+	-output_supply_port {vout CVCC_SW_pwr_set.power} \
+	-on_state {on_state vin {!ctr1}}
+
+set_port_attributes -ports {PD SLEEPB DO} -driver_supply PVCC_ON_pwr_set
+set_port_attributes -ports {CK A DI CS WE DELSEL} -driver_supply PVCC_SW_pwr_set
+
+set_isolation iso_PVCC_SW -domain PVCC_SW \
+	-isolation_power_net  PVCC_SW_pwr_set.power \
+	-isolation_ground_net PVCC_SW_pwr_set.ground \
+	-source PVCC_SW_pwr_set \
+	-clamp_value 0
+set_isolation_control iso_PVCC_SW -domain PVCC_SW \
+	-isolation_signal {PD} \
+	-isolation_sense high
+
+set_isolation iso_CVCC_SW -domain CVCC_SW \
+	-isolation_power_net  CVCC_SW_pwr_set.power \
+	-isolation_ground_net CVCC_SW_pwr_set.ground \
+	-source CVCC_SW_pwr_set \
+	-clamp_value 0
+set_isolation_control iso_CVCC_SW -domain CVCC_SW \
+	-isolation_signal {PD} \
+	-isolation_sense high
+
+add_power_state PVCC_ON_pwr_set -state norm {-supply_expr {power == `{FULL_ON,1.08}}}
+add_power_state PVCC_ON_pwr_set -state gnd {-supply_expr {gound == `{FULL_ON,0.0}}}
+
+add_power_state CVCC_ON_pwr_set -state norm {-supply_expr {power == `{FULL_ON,1.08}}}
+add_power_state CVCC_ON_pwr_set -state gnd {-supply_expr {gound == `{FULL_ON,0.0}}}
+
+add_power_state PVCC_SW_pwr_set -state norm {-supply_expr {power == `{FULL_ON,1.08}}}
+add_power_state PVCC_SW_pwr_set -state OFF {-supply_expr {power == `{OFF}}}
+add_power_state PVCC_SW_pwr_set -state gnd {-supply_expr {gound == `{FULL_ON,0.0}}}
+
+add_power_state CVCC_SW_pwr_set -state norm {-supply_expr {power == `{FULL_ON,1.08}}}
+add_power_state CVCC_SW_pwr_set -state OFF {-supply_expr {power == `{OFF}}}
+add_power_state CVCC_SW_pwr_set -state gnd {-supply_expr {gound == `{FULL_ON,0.0}}}
+
+create_pst PMC_GROUP -supplies {PVCC_ON_pwr_set.power  CVCC_ON_pwr_set.power PVCC_SW_pwr_set.power CVCC_SW_pwr_set.power PVCC_ON_pwr_set.ground}
+add_pst_state normal -pst PMC_GROUP -state {norm norm norm norm gnd} 
+add_pst_state sleep -pst PMC_GROUP -state {norm norm OFF norm gnd} 
+add_pst_state normal -pst PMC_GROUP -state {norm norm OFF OFF gnd} 

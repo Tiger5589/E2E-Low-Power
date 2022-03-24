@@ -1,0 +1,33 @@
+create_power_domain Top_PD
+create_power_domain BLOCK_PD -elements {Block}  
+
+create_power_switch top_sw   -domain PD \
+  -input_supply_port {in Top_PD.primary.power}   \
+  -output_supply_port {out BLOCK_PD.primary.power} \
+  -control_port "p0_sd ${PWR_CTRLR_TOP}p0_sd" \
+  -on_state {p0_on_state in {!p0_sd}} \
+  -off_state {p0_off_state p0_sd}
+
+
+## Block isolation strategy
+set_isolation Block_iso_out \
+	-domain BLOCK_PD \
+	-source BLOCK_PD.primary \
+	-sink Top_PD.primary \
+	-clamp_value 1 
+
+## Block retention strategy
+set_retention_control block_ret -domain BLOCK_PD \
+        -save_signal {Block/all_save high} \
+        -restore_signal {Block/all_restore low}
+
+add_power_state  TOP_PD.primary  -state LO  \
+	{-supply_expr {power == `{FULL_ON, 1.08}}  \
+	{-supply_expr {power == `{OFF, 0.0}}  \
+	-logic_expr {!instOn & clkGate} }
+	¡Vsimstate NORMAL  
+
+create_pst pst_table ¡Vsupplies {TOP_PD.primary.power BLOCK_PD.primary.power TOP_PD.primary.ground}
+add_pst_state s0     -pst pst_table -state   {FULL_ON 	FULL_ON 	GND}
+add_pst_state s1     ¡Vpst pst_table ¡Vstate {FULL_ON 	OFF 		GND}
+

@@ -1,0 +1,62 @@
+create_power_domain TOP
+create_power_domain PD_SW -elements pd_switchable
+
+create_supply_port VDD
+create_supply_port VDD_SW
+create_supply_port VSS
+
+create_supply_net VDD -domain TOP
+create_supply_net VDD_SW -domain TOP
+create_supply_net VSS -domain TOP
+
+connect_supply_net VDD  -ports {VDD}
+connect_supply_net VDD_SW -ports VDD_SW
+connect_supply_net VSS  -ports {VSS}
+
+set_domain_supply_net TOP -primary_power_net VDD   
+                          -primary_ground_net VSS 
+set_domain_supply_net PD_SW -primary_power_net VDD_SW_S 		      
+                            -primary_ground_net VSS
+
+create_supply_net VDD_SW  -domain PD_SW ¡Vreuse
+create_supply_net VSS   -domain PD_SW ¡Vreuse
+create_supply_net VDD_SW_S -domain PD_SW
+
+create_power_switch PD_SW_sw
+ 	-domain PD_SW
+ 	-input_supply_port {in VDD_SW} 
+ 	-output_supply_port {out VDD_SW_S} 
+ 	-control_port {sleep pwrcon_pd_n}
+ 	-on_state {on in {!sleep}}
+
+set_isolation PD_SW_iso_out -domain PD_SW		      
+	-isolation_power_net VDD  
+	-isolation_ground_net VSS 
+	-clamp_value 1 	      
+	-applies_to outputs
+
+set_isolation_control PD_SW_iso_out ¡Vdomain PD_SW	                   
+	-isolation_signal pwrcon_iso_n              
+	-isolation_sense low       
+	-location parent
+
+set_retention PD_SW_ret -domain PD_SW               
+	-retention_power_net VDD_SW                    
+	-retention_ground_net VSS
+
+set_retention_control PD_SW_ret -domain PD_SW   	   
+	-save_signal {save high}  
+	-restore_signal {restore high}
+
+map_retention_cell PD_SW_ret -domain PD_SW   -lib_cell_type RSDFCD1
+
+add_port_state VDD    ¡Vstate {HV 1.08}
+add_port_state VDD_SW ¡Vstate {LV 0.9}
+add_port_state pd_switchable/PD_SW_sw/out    ¡Vstate {LV 0.9}               
+                                             ¡Vstate {OFF off}
+add_port_state VSS	-state {GND 0.0}
+
+create_pst pst_table ¡Vsupplies {VDD VDD_SW_S VDD_SW}
+add_pst_state s0     -pst pst_table -state {HV LV LV}
+add_pst_state s1     ¡Vpst pst_table ¡Vstate {HV OFF LV}
+

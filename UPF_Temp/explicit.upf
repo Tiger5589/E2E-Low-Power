@@ -1,0 +1,53 @@
+//=====================
+# Explicit Supply Set
+//=====================
+create_supply_set SS1 
+create_supply_set SS2
+create_supply_set ISO1_supply
+create_supply_set ISO2_supply
+
+// Method 1
+create_power_domain PD1 ¡Vinclude_scope
+set_domain_supply_net PD1 -primary_power_net SS1.power ¡Vprimary_ground_net SS1.ground
+create_power_domain PD2 ¡Velements U2
+set_domain_supply_net PD2 -primary_power_net SS2.power ¡Vprimary_ground_net SS2.ground
+// equal to "create_power_domain PD1 -supply {primary SS1}"
+
+set_isolation iso1 ¡Vdomain PD1 ¡Vlocation self \ 
+    ¡Vsource SS1 ¡Vsink SS2 \
+    ¡Visolation_supply_set ISO1_supply
+set_isolation iso2 ¡Vdomain PD2 ¡Vlocation self \ 
+    ¡Vsource SS2 ¡Vsink SS1 \
+    ¡Visolation_supply_set ISO2_supply
+//=====================
+// method 2
+create_power_domain PD1 -supply {primary SS1} -supply {default_isolation ISO1_supply}
+      -elements U1
+create_power_domain PD2 -supply {primary SS2} -supply {default_isolation ISO2_supply} 
+      -elements U2
+set_isolation iso1    \
+  -domain PD1 \
+  -applies_to output
+
+// Evolation of Supply Net Handle
+create_supply_port myVDD1
+create_supply_port myVDD2
+create_supply_port myVSS
+create_supply_port isoVDD1
+create_supply_port isoVDD2
+create_supply_net myVDD1 -domain PD1
+create_supply_net myVDD2 -domain PD1
+create_supply_net myVSS -domain PD1
+create_supply_net isoVDD1 -domain PD1
+create_supply_net isoVDD2 -domain PD1
+
+connect_supply_net myVDD1 -ports {myVDD1}
+connect_supply_net myVDD2 -ports {myVDD2}
+connect_supply_net myVSS -ports {myVSS}
+connect_supply_net isoVDD1 -ports {isoVDD1}
+connect_supply_net isoVDD2 -ports {isoVDD2}
+
+create_supply_set SS1 -function {power myVDD1} -function {ground myVSS} -update
+create_supply_set SS2 -function {power myVDD2} -function {ground myVSS} -update  
+create_supply_set ISO1_supply -function {power isoVDD1} -function {ground myVSS} -update
+create_supply_set ISO2_supply -function {power isoVDD2} -function {ground myVSS} -update

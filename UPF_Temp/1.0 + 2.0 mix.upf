@@ -1,0 +1,43 @@
+
+create_supply_set TOP_set
+create_supply_set FF_set
+
+create_supply_net VDD_TOP
+create_supply_net VDD_FF
+create_supply_net VSS
+
+create_supply_port VDD_TOP
+create_supply_port VDD_FF
+create_supply_port VSS
+
+connect_supply_net VDD_TOP    -ports VDD_TOP
+connect_supply_net VDD_FF    -ports VDD_FF
+connect_supply_net VSS    -ports VSS
+
+create_supply_set TOP_set -function {power VDD_TOP} -function {ground VSS} -update
+create_supply_set FF_set -function {power VDD_FF} -function {ground VSS} -update
+
+create_power_domain  PD_TOP -supply {primary TOP_set}
+create_power_domain  PD_FF -supply {primary FF_set} -elements {inst_vh_2 inst_vh_1}
+
+set_isolation iso_from_PDtop_to_PDff								    \
+				-isolation_power_net TOP_set.power \
+				-isolation_ground_net TOP_set.ground     \
+				-domain PD_TOP                                                           \
+				-clamp_value 0								    \
+				-source TOP_set -sink  FF_set
+set_isolation_control iso_from_PDtop_to_PDff							    \
+				-domain PD_TOP                                                            \
+				-isolation_signal SCURAMCLAMP						    \
+				-isolation_sense high							    \
+				-location self
+
+add_port_state VSS      -state {GND 0.0}
+add_power_state TOP_set -state TOP_FULL_ON {-supply_expr {power == `{FULL_ON,1.2}}}
+add_power_state TOP_set -state TOP_OFF {-supply_expr {power == OFF} -simstate CORRUPT}
+add_power_state FF_set -state FF_FULL_ON {-supply_expr {power == `{FULL_ON,1.2}}}
+add_power_state FF_set -state FF_OFF {-supply_expr {power == OFF} -simstate CORRUPT}
+
+create_pst A9TOP_PST	    -supplies		    { TOP_set.power FF_set.power VSS }
+add_pst_state A9_ALL_OFF    -pst A9TOP_PST -state   {  TOP_OFF        FF_OFF     GND }
+add_pst_state A9_ALL_OFF_H  -pst A9TOP_PST -state   { TOP_FULL_ON   FF_FULL_ON   GND }

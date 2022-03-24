@@ -1,0 +1,66 @@
+//===================================
+# Power Domain Supply Handles ( Implicit )
+//===================================
+
+//Supply Set Handles 
+// Method 1
+create_power_domain PD1 -include_scope
+create_power_domain PD2 -elements U2
+set_isolation PD2_iso_out \
+	-domain PD2 \
+	-source PD2.primary \
+	-sink PD1.primary
+
+// To set the isolation power 
+// Method 1
+create_power_domain PD1 -include_scope
+create_power_domain PD2 -supply {default_isolation PD1.primary} \
+      -elements U2
+
+// Method 2
+associate_supply_set PD1.primary \
+   -handle PD2.default_isolation
+
+//Supply set handles can be refined in 2 ways
+// Method 1
+create_supply_net VDD
+create_supply_net VSS
+create_supply_set PD1.primary \
+   -function {power VDD} \
+   -function {ground VSS} -update
+
+// Method 2
+create_supply_set SS1
+create_supply_set SS2
+associate_supply_set SS1 -handle PD1.primary
+associate_supply_set SS2 -handle PD2.primary
+
+// Method 3
+create_supply_net VDD
+create_supply_net VSS
+set_domain_supply_net PD1
+	-primary_power_net VDD \
+	-primary_ground_net VSS
+
+
+// Evolation of Supply Net Handle
+create_supply_set mySS1
+create_supply_set mySS2
+
+// Common ground
+create_supply_set mySS3 \
+-function {ground mySS1.ground}
+
+// Supply Set to Supply Set update
+create_supply_set mySS2 \
+-function {power mySS1.power} \
+-function {ground mySS1.ground} \
+-update
+
+// Supply Set to independent Supply Net update
+create_supply_net  myVDD
+create_supply_net  myVSS
+create_supply_set mySS1 \
+-function {power myVDD} \
+-function {ground myVSS} \
+-update
